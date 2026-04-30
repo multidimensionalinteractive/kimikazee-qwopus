@@ -1,0 +1,21 @@
+# Core Dependencies
+torch>=2.0.0
+transformers>=4.35.0
+accelerate>=0.25.0
+
+# llama.cpp bindings
+llama-cpp-python>=0.2.0
+
+# Web Framework (optional, for API)
+fastapi>=0.104.0
+uvicorn>=0.24.0
+pydantic>=2.5.0
+
+# Utilities
+python-dotenv>=1.0.0
+requests>=2.31.0
+aiohttp>=3.9.0
+
+# Optional: For agent swarms
+asyncio>=3.4.3
+concurrent-log-handler>=0.9.0
