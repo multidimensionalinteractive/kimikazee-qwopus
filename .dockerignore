@@ -1,0 +1,158 @@
+# Kimikazee Qwopus - .dockerignore
+# =================================
+# Files and directories to exclude from Docker build context
+
+# ==============================================================================
+# Git & Version Control
+# ==============================================================================
+.git
+.gitignore
+.gitattributes
+.gitmodules
+.gitlab-ci.yml
+.github
+
+# ==============================================================================
+# Python & Development
+# ==============================================================================
+# Byte-compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.env/
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Cython debug symbols
+*.pyd
+
+# ==============================================================================
+# Node.js (if used for front-end)
+# ==============================================================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ==============================================================================
+# Testing & Coverage
+# ==============================================================================
+coverage.xml
+.nyc_output/
+.pytest_cache/
+
+# ==============================================================================
+# Logs & Data
+# ==============================================================================
+*.log
+logs/
+*.log.*
+*.tmp
+
+# Model files (too large, should be mounted or downloaded separately)
+*.gguf
+*.bin
+*.ckpt
+*.pth
+models/
+*.model
+
+# Cache directories
+.cache/
+~/.cache/
+
+# ==============================================================================
+# Environment Files
+# ==============================================================================
+.env
+.env.*
+!.env.example
+
+# ==============================================================================
+# Documentation
+# ==============================================================================
+*.md
+docs/
+CHANGELOG.md
+
+# ==============================================================================
+# CI/CD
+# ==============================================================================
+.docker/
+docker-compose*.yml
+docker-compose.override.yml
+*.yml
+*.yaml
+!.github/workflows/*.yml
+
+# ==============================================================================
+# Temporary Files
+# ==============================================================================
+*.tmp
+*.temp
+*.bak
+*.swp
+*.orig
+
+# ==============================================================================
+# OS Files
+# ==============================================================================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ==============================================================================
+# Security & Secrets
+# ==============================================================================
+*.pem
+*.key
+*.crt
+secrets/
+credentials/

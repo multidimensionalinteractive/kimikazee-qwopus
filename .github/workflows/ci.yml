@@ -1,0 +1,232 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'release/**'
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - develop
+
+env:
+  PYTHON_VERSION: '3.11'
+  PROJECT_NAME: 'kimikazee-qwopus'
+
+jobs:
+  lint:
+    name: Lint & Style Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt
+          pip install flake8 black isort pyupgrade
+
+      - name: Check with flake8
+        run: |
+          flake8 . \
+            --count \
+            --select=E9,F63,F7,F82 \
+            --show-source \
+            --statistics \
+            --exclude=__pycache__,.git,.pytest_cache,.venv,venv,node_modules,dist,build
+          flake8 . \
+            --count \
+            --max-line-length=120 \
+            --max-complexity=18 \
+            --show-source \
+            --statistics \
+            --exclude=__pycache__,.git,.pytest_cache,.venv,venv,node_modules,dist,build
+
+      - name: Check with black
+        run: |
+          black --check --line-length 120 . \
+            --exclude=__pycache__|.git|.pytest_cache|.venv|venv|node_modules|dist|build
+
+      - name: Check imports with isort
+        run: |
+          isort --check-only --profile black . \
+            --skip=__pycache__ --skip=.git --skip=.pytest_cache --skip=.venv --skip=venv --skip=node_modules --skip=dist --skip=build
+
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt
+
+      - name: Install test dependencies
+        run: |
+          pip install pytest pytest-asyncio pytest-cov pytest-watch coverage
+          pip install flake8 black isort
+
+      - name: Run pytest with coverage
+        env:
+          COVERAGE_FILE: .coverage.${{ matrix.python-version }}
+        run: |
+          pytest tests/ \
+            -v \
+            --cov=server \
+            --cov=kimikazee_qwopus \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage-${{ matrix.python-version }}.xml \
+            --cov-report=html:htmlcov-${{ matrix.python-version }} \
+            --cov-fail-under=80 \
+            --tb=short
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-python-${{ matrix.python-version }}
+          path: |
+            coverage-${{ matrix.python-version }}.xml
+            htmlcov-${{ matrix.python-version }}/
+
+  type-check:
+    name: Type Checking
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt
+          pip install mypy pyright
+
+      - name: Run mypy
+        run: |
+          mypy . \
+            --ignore-missing-imports \
+            --exclude=__pycache__ \
+            --exclude=.git \
+            --exclude=.pytest_cache \
+            --exclude=tests \
+            --show-error-codes \
+            --pretty || true
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install security tools
+        run: |
+          pip install pip-audit safety bandit
+
+      - name: Audit dependencies (pip-audit)
+        run: |
+          pip-audit --requirement requirements.txt || true
+
+      - name: Check for vulnerabilities (safety)
+        run: |
+          safety check --requirement requirements.txt || true
+
+      - name: Run bandit (security linter)
+        run: |
+          bandit -r . -ll --exclude=__pycache__,.git,.pytest_cache,.venv,venv
+
+  codecov:
+    name: Upload Coverage to Codecov
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [test, lint, type-check, security-scan]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-python-*
+          path: coverage-artifacts
+          merge-multiple: true
+
+      - name: Install Codecov
+        run: |
+          pip install codecov
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage-artifacts/coverage-*.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    needs: [lint, test, type-check, security-scan]
+    
+    steps:
+      - name: CI Complete
+        run: |
+          echo "✅ CI Pipeline Completed"
+          echo "All jobs finished successfully!"

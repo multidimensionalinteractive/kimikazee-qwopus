@@ -1,21 +1,52 @@
+# Kimikazee Qwopus Dependencies
+# =============================
 # Core Dependencies
+
+# Deep Learning Framework
 torch>=2.0.0
 transformers>=4.35.0
 accelerate>=0.25.0
 
-# llama.cpp bindings
-llama-cpp-python>=0.2.0
+# llama.cpp bindings for GGUF model inference
+llama-cpp-python>=0.2.17
 
-# Web Framework (optional, for API)
+# Web Framework & ASGI Server
 fastapi>=0.104.0
-uvicorn>=0.24.0
+uvicorn[standard]>=0.24.0
+httptools>=0.6.0
+
+# Pydantic for request/response validation
 pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Configuration
+PyYAML>=6.0
+python-dotenv>=1.0.0
+
+# Async HTTP Client
+aiohttp>=3.9.0
+httpx>=0.25.0
+requests>=2.31.0
+
+# Logging & Monitoring
+concurrent-log-handler>=0.9.0
+python-json-logger>=2.0.0
 
 # Utilities
-python-dotenv>=1.0.0
-requests>=2.31.0
-aiohttp>=3.9.0
+python-multipart>=0.0.6  # For file uploads in form data
+aiocache>=0.12.2  # Optional caching
 
-# Optional: For agent swarms
-asyncio>=3.4.3
-concurrent-log-handler>=0.9.0
+# Optional dependencies
+# ----------------------
+# For JSON mode validation
+jsonschema>=4.20.0
+# For advanced tokenization
+regex>=2023.10.0
+
+# Development dependencies
+# ------------------------
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+pytest-watch>=4.2.0
+httpx>=0.25.0  # For async test client
