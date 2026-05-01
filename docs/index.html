@@ -467,7 +467,7 @@
   │       │       │  │       │       │   │       │       │
   │  Response     │  │       ▼       │   │       ▼       │
   │  < 200ms      │  │ ┌───────────┐ │   │ ┌───────────┐ │
-  │               │  │ │   Qwen    │ │   │ │   Qwen    │ │
+  │               │  │ │  Qwopus   │ │   │ │  Qwopus   │ │
   │               │  │ │   3.5 9B  │ │   │ │   3.5 9B  │ │
   │               │  │ │  35tok/s  │ │   │ │  35tok/s  │ │
   │               │  │ └─────┬─────┘ │   │ └─────┬─────┘ │
@@ -485,7 +485,7 @@
   <div class="container">
     <h2>Performance Benchmarks</h2>
     <p class="section-lead">
-      Tested on RTX 4080 Super (16GB VRAM) with Qwen 3.5 9B Q4_K_M + Gemma 3 2B Q4_K_M.
+      Tested on RTX 4080 Super (16GB VRAM) with Qwopus (Qwen3.5-9B fine-tune) Q4_K_M + Gemma 3 2B Q4_K_M.
       Both running via ik_llama.cpp with Flash Attention + q8_0 KV cache.
     </p>
 
@@ -548,7 +548,7 @@
         <span style="font-size:0.85rem;color:var(--green);">~3GB headroom</span>
       </div>
       <div class="vram-bar">
-        <div class="vram-segment" style="width:32.4%;background:#7c3aed;">Qwen 9B 5.3GB</div>
+        <div class="vram-segment" style="width:32.4%;background:#7c3aed;">Qwopus 9B 5.3GB</div>
         <div class="vram-segment" style="width:9.2%;background:#22d3ee;color:#000;">Gemma 2B 1.5GB</div>
         <div class="vram-segment" style="width:18.3%;background:#22c55e;color:#000;">KV Main 3GB</div>
         <div class="vram-segment" style="width:6.1%;background:#f472b6;color:#000;">KV Help 1GB</div>
@@ -556,7 +556,7 @@
         <div class="vram-segment" style="width:27.9%;background:rgba(255,255,255,0.05);color:#64748b;">Free</div>
       </div>
       <div class="vram-legend">
-        <div class="vram-legend-item"><div class="vram-dot" style="background:#7c3aed;"></div>Main Model (Qwen 3.5 9B Q4_K_M)</div>
+        <div class="vram-legend-item"><div class="vram-dot" style="background:#7c3aed;"></div>Main Model (Qwopus Q4_K_M)</div>
         <div class="vram-legend-item"><div class="vram-dot" style="background:#22d3ee;"></div>Helper Model (Gemma 3 2B Q4_K_M)</div>
         <div class="vram-legend-item"><div class="vram-dot" style="background:#22c55e;"></div>KV Cache — Main (q8_0)</div>
         <div class="vram-legend-item"><div class="vram-dot" style="background:#f472b6;"></div>KV Cache — Helper (q8_0)</div>
@@ -629,8 +629,8 @@ ik_llama.cpp-server <span class="kw">\</span>
         <p>Optimized llama.cpp fork with Flash Attention, q8_0 KV cache quantization, and multi-token prediction support.</p>
       </div>
       <div class="feature-card">
-        <h3>Qwen 3.5 9B Q4_K_M</h3>
-        <p>Main reasoning model. Best quality-to-speed ratio for 16GB VRAM. Runs at ~35-50 tok/s with full GPU offload.</p>
+        <h3>Qwopus Q4_K_M</h3>
+        <p>Main reasoning model. Based on Jackrong's Qwen3.5-9B fine-tune. Best quality-to-speed ratio for 16GB VRAM. Runs at ~35-50 tok/s with full GPU offload.</p>
       </div>
       <div class="feature-card">
         <h3>Gemma 3 2B Q4_K_M</h3>

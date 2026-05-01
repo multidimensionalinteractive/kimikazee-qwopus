@@ -32,9 +32,9 @@ It's not just another quantized model dump. It's a **full-stack inference pipeli
 
 ## 🧬 The Model DNA
 
-### Base Architecture: Qwen 3.5 9B × DeepSeek-V4-Flash
+### Base Architecture: Qwopus (Qwen3.5-9B fine-tune) × DeepSeek-V4-Flash
 
-The foundation is **Qwen3.5-9B** (Alibaba), one of the most capable open 9B models available, with a massive 248K vocabulary and native 262K context training window. Into this architecture, we distilled **DeepSeek-V4-Flash** reasoning traces — giving the model DeepSeek's signature chain-of-thought reasoning style, math capabilities, and code generation patterns while keeping Qwen's efficiency and tool-use strengths.
+The foundation is **[Qwopus](https://huggingface.co/Jackrong/Qwopus-GLM-18B-Merged-GGUF)** (Jackrong), a Qwen3.5-9B fine-tune that pushes the 9B class further with refined reasoning and instruction following. Into this architecture, we distilled **DeepSeek-V4-Flash** reasoning traces — giving the model DeepSeek's signature chain-of-thought reasoning style, math capabilities, and code generation patterns while keeping Qwen's efficiency and tool-use strengths.
 
 | Trait | Source | What You Get |
 |-------|--------|-------------|
@@ -443,7 +443,7 @@ kimikazee-qwopus/
 
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
-| **Model base** | Qwen 3.5 9B | Architecture, vocabulary, tool use |
+| **Model base** | Qwopus (Qwen3.5-9B fine-tune) | Architecture, vocabulary, tool use |
 | **Reasoning distill** | DeepSeek-V4-Flash | Chain-of-thought, math, code logic |
 | **Runtime** | ik_llama.cpp | Custom llama.cpp fork with MoE optimizations |
 | **KV cache** | TurboQuant++ (turbo3) | 3-bit KV compression for VRAM efficiency |
@@ -502,7 +502,7 @@ MIT License — see [LICENSE](LICENSE).
 
 - **Qwen Team** (Alibaba) — Qwen 3.5 9B base architecture
 - **DeepSeek** — V4-Flash reasoning traces for distillation
-- **Jackrong** — Qwen3.5-9B-DeepSeek-V4-Flash distillation
+- **[Qwopus](https://huggingface.co/Jackrong/Qwopus-GLM-18B-Merged-GGUF)** (Jackrong) — Qwen3.5-9B fine-tune base model
 - **ik_llama.cpp** — Performance-focused llama.cpp fork
 - **TurboQuant** — KV cache compression system
 - **TheTom** — TurboQuant turbo3 implementation
