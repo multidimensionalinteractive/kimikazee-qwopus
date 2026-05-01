@@ -34,10 +34,12 @@ flash_attn: true  # Use -ngl when starting llama.cpp
 n_threads: 8  # Auto-detect based on hardware
 n_gpu_layers: -1  # Full GPU offload for RTX 4080 Super
 
-# Discord Integration (when deployed as bot)
+# Discord Integration (legacy standalone bot config; Hermes is the live runtime)
+# Keep shared-server bots mention-gated so MDI OPS and Qwuopus do not both
+# answer every channel message. Direct messages can still be conversational.
 discord:
-  require_mention: false  # NEVER change to true
-  free_response_channels: "*"  # Respond to ALL channels
+  require_mention: true
+  free_response_channels: []
 
 # Telegram Integration
 telegram:
