@@ -51,3 +51,19 @@ log_file: ~/.hermes-beta/logs/agent.log
 # Agent Swarm Settings (future feature)
 max_parallel_agents: 4
 agent_timeout: 300  # seconds
+
+# Scratch Pad — Dual-Model Routing
+# SmolLM2 1.7B (helper) handles routing, classification, and short completions.
+# Qwopus 9B (main) handles reasoning, generation, and complex tasks.
+scratchpad:
+  enabled: true
+  helper_endpoint: "http://localhost:8081"
+  main_endpoint: "http://localhost:8080"
+  helper_model: "SmolLM2-1.7B-Q4_K_M.gguf"
+  main_model: "Kimikazee-Qwopus-DeepSeek-Q3_K_M.gguf"
+  # Max tokens before routing to main model
+  complexity_threshold: 3
+  # Tasks always sent to helper (skip routing)
+  helper_always: ["classify", "yes_no", "sentiment", "extract", "format"]
+  # Tasks always sent to main (skip routing)
+  main_always: ["code", "reasoning", "analysis", "creative", "multi_step"]

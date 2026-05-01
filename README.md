@@ -91,74 +91,53 @@ This keeps the model focused on recent relevant information without manual conte
 
 ### 🧬 Scratch Pad LLM — Dual-Model Architecture (NEW)
 
-Kimikazee now runs **two models in parallel** on a single RTX 4080 Super. A small, fast helper model (Gemma 3 2B) acts as a "scratch pad" that handles lightweight tasks at 100+ tok/s while the main Qwen 3.5 9B focuses on complex reasoning.
+Kimikazee runs **two models in parallel** on a single RTX 4080 Super. A lightweight helper model acts as a "scratch pad" that handles routing, classification, and short completions while the main Qwopus 9B focuses on complex reasoning.
+
+**Deployed configuration:**
+
+| Role | Model | Size | Port | VRAM |
+|------|-------|------|------|------|
+| Main | Qwopus-DeepSeek Q3_K_M | 4.2 GB | 8080 | ~5 GB |
+| Helper | SmolLM2 1.7B Q4_K_M | 1.0 GB | 8081 | ~1.5 GB |
+| **Total** | | | | **~6.5 GB** (9.5 GB free) |
+
+**Architecture:**
 
 ```
-User Request
+User Request → proxy.py (port 3000)
     │
-    ▼
-ScratchPadRouter (classify)
+    ├─ classify_request() — regex + token heuristics
     │
-    ├─ TRIVIAL ───→ Helper Only (100+ tok/s, < 200ms)
-    │               "hello", "42 * 7", "what time is it"
+    ├─ HELPER → SmolLM2 1.7B :8081
+    │   "what is 2+2", "classify this", "yes or no"
+    │   Response in <200ms, ~80+ tok/s
     │
-    ├─ SIMPLE ────→ Helper Pre-process → Main Generate
-    │               Extracts core intent, removes filler (15-40% prompt savings)
-    │
-    ├─ STANDARD ──→ Main Model Only
-    │               Normal conversation, no routing overhead
-    │
-    ├─ COMPLEX ───→ Main Generate → Helper Verify
-    │               Code gen, architecture, analysis (catches hallucinations)
-    │
-    └─ TOOL_CHAIN → Main + Scratchpad Protocol
-                    File ops, multi-step tool workflows
+    └─ MAIN → Qwopus 9B :8080
+        Code, reasoning, analysis, creative writing
+        Full 9B reasoning, ~100+ tok/s
 ```
 
-**What the helper does:**
+**What the helper handles:**
 
-| Function | Description | Savings |
+| Function | Description | Benefit |
 |----------|-------------|---------|
 | Task Classification | Routes trivial tasks entirely to helper | ~100% for simple queries |
-| Pre-processing | Extracts core intent, strips filler | 15-40% prompt reduction |
-| Context Compression | Summarizes old conversation turns | 50-70% context savings |
-| Output Verification | Catches hallucinations, syntax errors | -15-20% error rate |
+| Short Completions | Factual lookups, math, yes/no | Sub-200ms response |
+| Pre-processing | Extracts core intent, strips filler | 15-40% prompt savings |
+| Format Tasks | JSON reformatting, extraction | Offloads main model |
 
-**VRAM budget (both models on one GPU):**
+**Running it:**
 
-| Component | VRAM |
-|-----------|------|
-| Qwen 3.5 9B Q4_K_M | 5.3 GB |
-| Gemma 3 2B Q4_K_M | 1.5 GB |
-| KV Cache (main, q8_0) | 3.0 GB |
-| KV Cache (helper, q8_0) | 1.0 GB |
-| CUDA overhead | 1.0 GB |
-| **Total** | **~11.8 GB** (4.5 GB free) |
-
-Both models fit comfortably with room to spare. The helper runs on a second llama-server instance on port 8081.
-
-**Setup:**
 ```bash
-# Launch helper server
-ik_llama.cpp-server \
-  -m /models/gemma-3-2b-it-Q4_K_M.gguf \
-  --host 0.0.0.0 --port 8081 \
-  -c 4096 -ngl 99 --flash-attn -ctk q8_0
+# Start both models
+llama-server -m models/Qwopus-DeepSeek-Q3_K_M.gguf -p 8080 -c 4096 -ngl 99
+llama-server -m models/SmolLM2-1.7B-Q4_K_M.gguf -p 8081 -c 2048 -ngl 99
 
-# Add to config.yaml
-# scratchpad:
-#   enabled: true
-#   helper_url: "http://localhost:8081"
-#   helper_model: "gemma-3-2b-it"
+# Start proxy (routes between them)
+python proxy.py --port 3000
 ```
 
-```python
-# Wire into server.py — one line
-from scratchpad.integration import setup_scratchpad
-setup_scratchpad(app, config, main_completion_fn=your_fn)
-```
-
-Full docs: [docs/scratchpad.md](docs/scratchpad.md)
+The proxy exposes a single OpenAI-compatible API on port 3000. Callers see one endpoint; the proxy handles routing transparently. Use `model: "auto"` for automatic routing, or `model: "helper"` / `model: "main"` to force a specific backend.
 
 ---
 
@@ -425,7 +404,8 @@ kimikazee-qwopus/
 ├── tests/                  # Test suite
 │   └── test_scratchpad.py  # Scratch pad tests
 ├── config.yaml             # Default configuration
-├── server.py               # OpenAI-compatible FastAPI server
+├── server.py               # llama-cpp-python FastAPI server
+├── proxy.py                # Dual-model routing proxy (SmolLM2 + Qwopus)
 ├── kimikazee_qwopus.py     # Core agent module
 ├── requirements.txt        # Python dependencies
 ├── Makefile                # Build/run shortcuts
@@ -449,7 +429,7 @@ kimikazee-qwopus/
 | **KV cache** | TurboQuant++ (turbo3) | 3-bit KV compression for VRAM efficiency |
 | **Attention decay** | Temporal Attention Decay (λ=0.0001) | Time-based attention decay for long contexts |
 | **Prompting** | Scratchpad protocol | Non-drift internal logic for tool chains |
-| **Scratch Pad** | Gemma 3 2B + ScratchPadRouter | Dual-model routing: classification, pre-processing, verification |
+| **Scratch Pad** | SmolLM2 1.7B + proxy.py | Dual-model routing: classification, short completions, pre-processing |
 | **API** | FastAPI + OpenAI-compat | Production-ready REST API with SSE streaming |
 | **Quantization** | GGUF Q4_K_M / Q3_K_M | Multiple precision levels for different VRAM budgets |
 | **GPU** | CUDA + Flash Attention | Full GPU offload with optimized attention |
@@ -459,7 +439,7 @@ kimikazee-qwopus/
 ## 🗺️ Roadmap
 
 - [x] **Phase 1** — Current: Q4_K_M + TurboQuant + scratchpad prompt ✅
-- [x] **Phase 6** — Gemma 3 2B as secondary scratch pad model ✅
+- [x] **Phase 6** — SmolLM2 1.7B as secondary scratch pad model + proxy.py ✅
 - [ ] **Phase 2** — MoQ (Mixture of Quants) for per-tensor precision optimization
 - [ ] **Phase 3** — MTP (Multi-Token Prediction) via ik_llama.cpp for ~30% speed boost
 - [ ] **Phase 4** — EAGLE3 speculative decoding for 2x+ generation speed

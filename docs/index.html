@@ -385,7 +385,7 @@
         <div class="feature-icon">🧠</div>
         <h3>Scratch Pad LLM</h3>
         <p>
-          A tiny helper model (Gemma 3 2B / SmolLM2 1.7B) handles task classification,
+          A lightweight helper model (SmolLM2 1.7B) handles task classification,
           pre-processing, context compression, and output verification at 100+ tok/s.
         </p>
       </div>
@@ -460,9 +460,9 @@
   │   Helper Only │  │   STANDARD    │   │   TOOL_CHAIN  │
   │               │  │               │   │               │
   │  ┌─────────┐  │  │  ┌─────────┐  │   │  ┌─────────┐  │
-  │  │  Gemma  │  │  │  │  Helper │  │   │  │  Helper │  │
-  │  │  3 2B   │  │  │  │  Pre-   │  │   │  │  Verify │  │
-  │  │ 100tok/s│  │  │  │ Process │  │   │  │ Output  │  │
+  │  │  SmolLM2 │  │  │  │  Helper │  │   │  │  Helper │  │
+  │  │   1.7B   │  │  │  │  Pre-   │  │   │  │  Verify │  │
+  │  │ ~80tok/s │  │  │  │ Process │  │   │  │ Output  │  │
   │  └────┬────┘  │  │  └────┬────┘  │   │  └────┬────┘  │
   │       │       │  │       │       │   │       │       │
   │  Response     │  │       ▼       │   │       ▼       │
@@ -485,7 +485,7 @@
   <div class="container">
     <h2>Performance Benchmarks</h2>
     <p class="section-lead">
-      Tested on RTX 4080 Super (16GB VRAM) with Qwopus (Qwen3.5-9B fine-tune) Q4_K_M + Gemma 3 2B Q4_K_M.
+      Tested on RTX 4080 Super (16GB VRAM) with Qwopus (Qwen3.5-9B fine-tune) Q3_K_M + SmolLM2 1.7B Q4_K_M.
       Both running via ik_llama.cpp with Flash Attention + q8_0 KV cache.
     </p>
 
@@ -545,19 +545,19 @@
     <div class="vram-section">
       <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
         <span style="font-size:0.85rem;color:var(--text2);">RTX 4080 Super — 16,384 MB</span>
-        <span style="font-size:0.85rem;color:var(--green);">~3GB headroom</span>
+        <span style="font-size:0.85rem;color:var(--green);">~7.7GB headroom</span>
       </div>
       <div class="vram-bar">
-        <div class="vram-segment" style="width:32.4%;background:#7c3aed;">Qwopus 9B 5.3GB</div>
-        <div class="vram-segment" style="width:9.2%;background:#22d3ee;color:#000;">Gemma 2B 1.5GB</div>
-        <div class="vram-segment" style="width:18.3%;background:#22c55e;color:#000;">KV Main 3GB</div>
-        <div class="vram-segment" style="width:6.1%;background:#f472b6;color:#000;">KV Help 1GB</div>
+        <div class="vram-segment" style="width:32.4%;background:#7c3aed;">Qwopus 9B 4.2GB</div>
+        <div class="vram-segment" style="width:9.2%;background:#22d3ee;color:#000;">SmolLM2 1GB</div>
+        <div class="vram-segment" style="width:18.3%;background:#22c55e;color:#000;">KV Main 2GB</div>
+        <div class="vram-segment" style="width:6.1%;background:#f472b6;color:#000;">KV 0.5GB</div>
         <div class="vram-segment" style="width:6.1%;background:#64748b;color:#000;">CUDA 1GB</div>
-        <div class="vram-segment" style="width:27.9%;background:rgba(255,255,255,0.05);color:#64748b;">Free</div>
+        <div class="vram-segment" style="width:46.9%;background:rgba(255,255,255,0.05);color:#64748b;">Free ~7.7GB</div>
       </div>
       <div class="vram-legend">
-        <div class="vram-legend-item"><div class="vram-dot" style="background:#7c3aed;"></div>Main Model (Qwopus Q4_K_M)</div>
-        <div class="vram-legend-item"><div class="vram-dot" style="background:#22d3ee;"></div>Helper Model (Gemma 3 2B Q4_K_M)</div>
+        <div class="vram-legend-item"><div class="vram-dot" style="background:#7c3aed;"></div>Main Model (Qwopus Q3_K_M)</div>
+        <div class="vram-legend-item"><div class="vram-dot" style="background:#22d3ee;"></div>Helper Model (SmolLM2 1.7B Q4_K_M)</div>
         <div class="vram-legend-item"><div class="vram-dot" style="background:#22c55e;"></div>KV Cache — Main (q8_0)</div>
         <div class="vram-legend-item"><div class="vram-dot" style="background:#f472b6;"></div>KV Cache — Helper (q8_0)</div>
         <div class="vram-legend-item"><div class="vram-dot" style="background:#64748b;"></div>CUDA Overhead</div>
@@ -582,7 +582,7 @@
       </div>
       <pre><code><span class="cmt"># Start a second llama-server for the scratch pad</span>
 ik_llama.cpp-server <span class="kw">\</span>
-  -m /models/gemma-3-2b-it-Q4_K_M.gguf <span class="kw">\</span>
+  -m /models/SmolLM2-1.7B-Q4_K_M.gguf <span class="kw">\</span>
   --host <span class="num">0.0.0.0</span> --port <span class="num">8081</span> <span class="kw">\</span>
   -c <span class="num">4096</span> -ngl <span class="num">99</span> <span class="kw">\</span>
   --flash-attn -ctk q8_0</code></pre>
@@ -597,7 +597,7 @@ ik_llama.cpp-server <span class="kw">\</span>
 <span class="fn">scratchpad</span>:
   <span class="fn">enabled</span>: <span class="kw">true</span>
   <span class="fn">helper_url</span>: <span class="str">"http://localhost:8081"</span>
-  <span class="fn">helper_model</span>: <span class="str">"gemma-3-2b-it"</span>
+  <span class="fn">helper_model</span>: <span class="str">"SmolLM2-1.7B"</span>
   <span class="fn">max_tokens_classify</span>: <span class="num">64</span>
   <span class="fn">helper_temperature</span>: <span class="num">0.1</span>
   <span class="fn">helper_timeout</span>: <span class="num">5.0</span></code></pre>
@@ -605,16 +605,12 @@ ik_llama.cpp-server <span class="kw">\</span>
 
     <div class="code-block">
       <div class="code-header">
-        <span>3. Wire it in server.py</span>
-        <span class="lang">python</span>
+        <span>3. Run the proxy</span>
+        <span class="lang">bash</span>
       </div>
-      <pre><code><span class="kw">from</span> scratchpad.integration <span class="kw">import</span> <span class="fn">setup_scratchpad</span>
-
-<span class="cmt"># One line — no changes to existing endpoints</span>
-<span class="fn">setup_scratchpad</span>(app, config, main_completion_fn=your_fn)
-
-<span class="cmt"># The router handles everything:</span>
-<span class="cmt">#   classify → preprocess → main model → verify</span></code></pre>
+      <pre><code><span class="cmt"># Launch the dual-model routing proxy on port 8082</span>
+python proxy.py
+<span class="cmt"># Clients connect to localhost:8082 — auto-routes to SmolLM2 or Qwopus</span></code></pre>
     </div>
   </div>
 </section>
@@ -629,12 +625,12 @@ ik_llama.cpp-server <span class="kw">\</span>
         <p>Optimized llama.cpp fork with Flash Attention, q8_0 KV cache quantization, and multi-token prediction support.</p>
       </div>
       <div class="feature-card">
-        <h3>Qwopus Q4_K_M</h3>
+        <h3>Qwopus Q3_K_M</h3>
         <p>Main reasoning model. Based on Jackrong's Qwen3.5-9B fine-tune. Best quality-to-speed ratio for 16GB VRAM. Runs at ~35-50 tok/s with full GPU offload.</p>
       </div>
       <div class="feature-card">
-        <h3>Gemma 3 2B Q4_K_M</h3>
-        <p>Helper scratch pad model. 100+ tok/s for classification, pre-processing, and verification. Only 1.5GB VRAM.</p>
+        <h3>SmolLM2 1.7B Q4_K_M</h3>
+        <p>Helper scratch pad model. ~80 tok/s for classification, pre-processing, and verification. Only ~1GB VRAM.</p>
       </div>
       <div class="feature-card">
         <h3>FastAPI + Python</h3>
