@@ -315,8 +315,13 @@ def create_app(config_path: str = "config.yaml") -> FastAPI:
         start = time.time()
 
         try:
+            # Hermes frequently requests streaming from OpenAI-compatible backends.
+            # The previous pass-through returned an httpx stream after its client
+            # context was closing, which caused incomplete chunk reads and empty
+            # model responses. Fetch non-streaming from llama-server, then emit a
+            # minimal OpenAI-style SSE stream for streaming callers.
             resp = await proxy_request(
-                endpoint, model_name, messages, params, stream=stream
+                endpoint, model_name, messages, params, stream=False
             )
         except httpx.ConnectError:
             raise HTTPException(
@@ -325,12 +330,39 @@ def create_app(config_path: str = "config.yaml") -> FastAPI:
             )
 
         elapsed = time.time() - start
+        data = resp.json()
 
         if stream:
-            # Pass through SSE stream
             async def stream_generator():
-                async for chunk in resp.aiter_text():
-                    yield chunk
+                content = data.get("choices", [{}])[0].get("message", {}).get("content") or ""
+                chunk_id = data.get("id") or f"chatcmpl-{uuid.uuid4()}"
+                created = int(time.time())
+                first = {
+                    "id": chunk_id,
+                    "object": "chat.completion.chunk",
+                    "created": created,
+                    "model": model_name,
+                    "choices": [{"index": 0, "delta": {"role": "assistant"}, "finish_reason": None}],
+                }
+                yield "data: " + json.dumps(first) + "\n\n"
+                if content:
+                    body = {
+                        "id": chunk_id,
+                        "object": "chat.completion.chunk",
+                        "created": created,
+                        "model": model_name,
+                        "choices": [{"index": 0, "delta": {"content": content}, "finish_reason": None}],
+                    }
+                    yield "data: " + json.dumps(body) + "\n\n"
+                final = {
+                    "id": chunk_id,
+                    "object": "chat.completion.chunk",
+                    "created": created,
+                    "model": model_name,
+                    "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+                }
+                yield "data: " + json.dumps(final) + "\n\n"
+                yield "data: [DONE]\n\n"
 
             return StreamingResponse(
                 stream_generator(),
@@ -344,7 +376,6 @@ def create_app(config_path: str = "config.yaml") -> FastAPI:
             )
 
         # Non-streaming: enrich response with routing metadata
-        data = resp.json()
         data["_route"] = {
             "backend": "helper" if is_helper else "main",
             "endpoint": endpoint,
