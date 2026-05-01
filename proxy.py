@@ -194,19 +194,14 @@ async def proxy_request(
     }
     if params.get("stop"):
         payload["stop"] = params["stop"]
-    if passthrough:
-        # Preserve OpenAI-compatible tool calling and structured-output fields
-        # from Hermes. Without this, the local model only sees prose
-        # instructions and tends to describe tool calls instead of making them.
-        for key in (
-            "tools",
-            "tool_choice",
-            "parallel_tool_calls",
-            "response_format",
-            "seed",
-            "presence_penalty",
-            "frequency_penalty",
-        ):
+    if passthrough and passthrough.get("forward_openai_tools"):
+        # Some OpenAI-compatible backends accept native tool fields. llama.cpp
+        # often rejects them with HTTP 400, so this is opt-in by config.
+        for key in ("tools", "tool_choice", "parallel_tool_calls"):
+            if key in passthrough and passthrough[key] is not None:
+                payload[key] = passthrough[key]
+    if passthrough and passthrough.get("forward_extra_fields"):
+        for key in ("response_format", "seed", "presence_penalty", "frequency_penalty"):
             if key in passthrough and passthrough[key] is not None:
                 payload[key] = passthrough[key]
 
@@ -316,6 +311,8 @@ def create_app(config_path: str = "config.yaml") -> FastAPI:
             "presence_penalty",
             "frequency_penalty",
         )}
+        passthrough["forward_openai_tools"] = bool(cfg.get("forward_openai_tools", False))
+        passthrough["forward_extra_fields"] = bool(cfg.get("forward_extra_fields", False))
 
         params = {
             "temperature": temperature,
@@ -355,7 +352,30 @@ def create_app(config_path: str = "config.yaml") -> FastAPI:
             )
 
         elapsed = time.time() - start
-        data = resp.json()
+        try:
+            data = resp.json()
+        except Exception:
+            data = {"error": {"message": resp.text[:1000]}}
+
+        if resp.status_code >= 400:
+            message = "backend error"
+            if isinstance(data, dict):
+                err = data.get("error")
+                if isinstance(err, dict):
+                    message = err.get("message") or err.get("detail") or message
+                elif isinstance(err, str):
+                    message = err
+            log.warning("Backend %s returned HTTP %s: %s", endpoint, resp.status_code, message)
+            return JSONResponse(
+                status_code=resp.status_code,
+                content={
+                    "error": {
+                        "message": f"Qwuopus backend returned HTTP {resp.status_code}: {message}",
+                        "type": "backend_error",
+                        "backend_status": resp.status_code,
+                    }
+                },
+            )
 
         if stream:
             async def stream_generator():
