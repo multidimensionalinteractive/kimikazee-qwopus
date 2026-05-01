@@ -3,20 +3,36 @@
 
 # Model Provider Settings
 provider: custom  # Options: 'custom', 'qwopus', 'openrouter', 'kimi'
-model: Qwen3.5-9B-Uncensored-Q8_0.gguf
+model: Qwen3.5-9B-DeepSeek-V4-Flash-Q4_K_M.gguf
 
 # Context & Inference
 context_window: 128000
 parallel: 4
 n_predict: -1  # Generate until max context or stop token
-temp: 0.7  # Temperature (0.0 - 2.0)
-top_p: 0.9
+
+# Sampling Strategy — Split by task type
+# Default (chat/reasoning): balanced creativity
+temp: 0.5
+top_p: 0.92
 top_k: 40
+min_p: 0.05           # Prune tokens <5% of top token prob — cleaner than top_k alone
+repeat_penalty: 1.1   # Prevent tool-call loops in long agent chains
+mirostat: 2           # Target perplexity for coherent multi-step reasoning
+mirostat_tau: 5.0     # Target entropy
+mirostat_eta: 0.1     # Adaptation rate
+
+# Per-task temperature overrides (used by server.py routing logic)
+temp_tool_call: 0.15  # Deterministic tool calls
+temp_reasoning: 0.5   # Some variation for exploring solutions
+temp_chat: 0.8        # Personality + creativity
+
+# Anti-hallucination
+repeat_penalty_last_n: 256  # Look back further for repetition detection
 
 # llama.cpp Optimizations (DO NOT CHANGE these!)
 flash_attn: true  # Use -ngl when starting llama.cpp
 n_threads: 8  # Auto-detect based on hardware
-n_gpu_layers: 0  # GPU offload, set to -1 for all layers
+n_gpu_layers: -1  # Full GPU offload for RTX 4080 Super
 
 # Discord Integration (when deployed as bot)
 discord:

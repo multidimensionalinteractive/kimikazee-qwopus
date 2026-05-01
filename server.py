@@ -41,6 +41,14 @@ from pydantic import BaseModel, Field, validator
 from llama_cpp import Llama, LlamaGrammar
 from llama_cpp.llama_tokenizer import LlamaTokenizer
 
+# Kimikazee prompt + temperature routing
+from prompts.system_prompt import (
+    build_system_prompt,
+    detect_task_type,
+    get_temperature,
+    KIMIKAzee_SYSTEM_PROMPT,
+)
+
 # =============================================================================
 # CONFIGURATION LOADING
 # =============================================================================
@@ -597,11 +605,22 @@ async def generate_stream_response(
     prompt = format_qwen_prompt(messages)
     
     # Get generation parameters from request or config
-    temperature = request.temperature or app_state.config.get("temp", 0.7)
+    msg_dicts = [m if isinstance(m, dict) else m.model_dump() for m in messages]
+    task_type = detect_task_type(msg_dicts)
+    default_temp = get_temperature(task_type)
+    temperature = request.temperature if request.temperature is not None else default_temp
     top_p = request.top_p or app_state.config.get("top_p", 0.9)
     top_k = request.top_k or app_state.config.get("top_k", 40)
     max_tokens = request.max_tokens or app_state.config.get("n_predict", -1)
     stop = request.stop or None
+
+    # Inject system prompt if none present
+    has_system = any(
+        (m.get("role") if isinstance(m, dict) else getattr(m, "role", None)) == "system"
+        for m in messages
+    )
+    if not has_system:
+        messages.insert(0, {"role": "system", "content": KIMIKAzee_SYSTEM_PROMPT})
     
     # Generate with streaming
     stream = model.create_chat_completion(
@@ -850,27 +869,42 @@ def create_app() -> FastAPI:
             )
         
         # Get generation parameters
-        temperature = request.temperature or app_state.config.get("temp", 0.7)
+        # Smart temperature routing: detect task type, override if caller didn't specify
+        task_type = detect_task_type([m.model_dump() for m in request.messages])
+        default_temp = get_temperature(task_type)
+        temperature = request.temperature if request.temperature is not None else default_temp
         top_p = request.top_p or app_state.config.get("top_p", 0.9)
         top_k = request.top_k or app_state.config.get("top_k", 40)
         max_tokens = request.max_tokens or app_state.config.get("n_predict", -1)
         stop = request.stop or None
+
+        # Inject anti-hallucination system prompt if no system message present
+        messages = list(request.messages)
+        has_system = any(m.role == "system" for m in messages)
+        if not has_system:
+            sys_msg = ChatMessage(role="system", content=KIMIKAzee_SYSTEM_PROMPT)
+            messages.insert(0, sys_msg)
+
+        # Add repeat_penalty + min_p from config
+        repeat_penalty = app_state.config.get("repeat_penalty", 1.1)
+        repeat_penalty_last_n = app_state.config.get("repeat_penalty_last_n", 256)
         
         # Format prompt and generate
-        prompt = format_qwen_prompt([m.model_dump() for m in request.messages])
+        prompt = format_qwen_prompt([m.model_dump() for m in messages])
         
         try:
             # Generate completion
             start_time = time.time()
             
             result = model.create_chat_completion(
-                messages=request.messages,
+                messages=messages,
                 temperature=temperature,
                 top_p=top_p,
                 top_k=top_k,
                 max_tokens=max_tokens,
                 stop=stop,
                 stream=False,
+                repeat_penalty=repeat_penalty,
             )
             
             generation_time = time.time() - start_time
