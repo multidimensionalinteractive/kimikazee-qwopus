@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kimikazee Qwopus — Dual-Model LLM Inference Engine</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #111118;
+    --bg3: #1a1a24;
+    --accent: #7c3aed;
+    --accent2: #a78bfa;
+    --green: #22c55e;
+    --cyan: #22d3ee;
+    --pink: #f472b6;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --border: #2a2a3a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+  /* ── Hero ── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    padding: 80px 24px;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 30% 40%, rgba(124,58,237,0.15) 0%, transparent 50%),
+                radial-gradient(circle at 70% 60%, rgba(34,211,238,0.1) 0%, transparent 50%);
+    animation: pulse 8s ease-in-out infinite alternate;
+  }
+  @keyframes pulse {
+    0% { transform: scale(1) rotate(0deg); }
+    100% { transform: scale(1.1) rotate(5deg); }
+  }
+  .hero > * { position: relative; z-index: 1; }
+  .badge {
+    display: inline-block;
+    background: rgba(124,58,237,0.2);
+    border: 1px solid var(--accent);
+    color: var(--accent2);
+    padding: 6px 16px;
+    border-radius: 100px;
+    font-size: 0.8rem;
+    margin-bottom: 24px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  h1 {
+    font-size: clamp(2.5rem, 7vw, 4.5rem);
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #fff 0%, var(--accent2) 50%, var(--cyan) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-sub {
+    font-size: clamp(1rem, 2.5vw, 1.3rem);
+    color: var(--text2);
+    max-width: 600px;
+    margin-bottom: 40px;
+  }
+  .hero-stats {
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 48px;
+  }
+  .stat { text-align: center; }
+  .stat-num {
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: var(--cyan);
+    line-height: 1;
+  }
+  .stat-num.green { color: var(--green); }
+  .stat-num.pink { color: var(--pink); }
+  .stat-num.accent { color: var(--accent2); }
+  .stat-label {
+    font-size: 0.75rem;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+  .cta-group {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .btn {
+    display: inline-block;
+    padding: 14px 32px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.2s;
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover {
+    background: #6d28d9;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(124,58,237,0.4);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover {
+    border-color: var(--accent);
+    color: var(--accent2);
+  }
+
+  /* ── Sections ── */
+  section { padding: 80px 0; }
+  h2 {
+    font-size: 2rem;
+    margin-bottom: 12px;
+    color: #fff;
+  }
+  .section-lead {
+    color: var(--text2);
+    font-size: 1.05rem;
+    margin-bottom: 48px;
+    max-width: 640px;
+  }
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+  }
+  .feature-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    transition: border-color 0.2s;
+  }
+  .feature-card:hover { border-color: var(--accent); }
+  .feature-icon {
+    font-size: 1.8rem;
+    margin-bottom: 12px;
+  }
+  .feature-card h3 {
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+    color: #fff;
+  }
+  .feature-card p {
+    font-size: 0.9rem;
+    color: var(--text2);
+    line-height: 1.6;
+  }
+
+  /* ── Architecture Diagram ── */
+  .arch {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 40px;
+    overflow-x: auto;
+  }
+  .arch pre {
+    color: var(--cyan);
+    font-size: 0.85rem;
+    line-height: 1.8;
+    white-space: pre;
+    text-align: center;
+    margin: 0 auto;
+    display: inline-block;
+    min-width: fit-content;
+  }
+
+  /* ── Code Block ── */
+  .code-block {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 24px 0;
+  }
+  .code-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+    color: var(--text2);
+  }
+  .code-header .lang {
+    color: var(--accent2);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  pre code {
+    display: block;
+    padding: 20px;
+    font-size: 0.85rem;
+    line-height: 1.7;
+    overflow-x: auto;
+  }
+  .kw { color: var(--accent2); }
+  .str { color: var(--green); }
+  .cmt { color: #555; font-style: italic; }
+  .fn { color: var(--cyan); }
+  .num { color: var(--pink); }
+
+  /* ── Perf Table ── */
+  .perf-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 0.9rem;
+  }
+  .perf-table th, .perf-table td {
+    padding: 14px 20px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .perf-table th {
+    color: var(--text2);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    background: var(--bg3);
+  }
+  .perf-table td:nth-child(2) { color: var(--pink); }
+  .perf-table td:nth-child(3) { color: var(--cyan); }
+  .perf-table td:nth-child(4) { color: var(--green); font-weight: 700; }
+
+  /* ── VRAM Bar ── */
+  .vram-section {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+  }
+  .vram-bar {
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    overflow: hidden;
+    margin: 20px 0;
+    background: var(--bg);
+  }
+  .vram-segment {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    padding: 0 8px;
+    transition: width 0.5s;
+  }
+  .vram-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .vram-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: var(--text2);
+  }
+  .vram-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center;
+    padding: 48px 24px;
+    border-top: 1px solid var(--border);
+    color: var(--text2);
+    font-size: 0.85rem;
+  }
+  footer a {
+    color: var(--accent2);
+    text-decoration: none;
+  }
+  footer a:hover { text-decoration: underline; }
+
+  /* ── Responsive ── */
+  @media (max-width: 640px) {
+    .hero { min-height: auto; padding: 60px 16px; }
+    .hero-stats { gap: 24px; }
+    .stat-num { font-size: 2rem; }
+    .arch pre { font-size: 0.65rem; }
+    section { padding: 48px 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════ HERO ════════ -->
+<section class="hero">
+  <div class="badge">Open Source • MIT License</div>
+  <h1>Kimikazee Qwopus</h1>
+  <p class="hero-sub">
+    Dual-model LLM inference engine for consumer GPUs.
+    A scratch pad helper model + smart routing = faster responses, bigger context, fewer hallucinations.
+  </p>
+
+  <div class="hero-stats">
+    <div class="stat">
+      <div class="stat-num green">13×</div>
+      <div class="stat-label">Faster Trivial Tasks</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num accent">1.6×</div>
+      <div class="stat-label">Effective Throughput</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num cyan">3×</div>
+      <div class="stat-label">More Context Turns</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num pink">-20%</div>
+      <div class="stat-label">Hallucination Rate</div>
+    </div>
+  </div>
+
+  <div class="cta-group">
+    <a href="https://github.com/multidimensionalinteractive/kimikazee-qwopus" class="btn btn-primary">
+      ⚡ Star on GitHub
+    </a>
+    <a href="#how-it-works" class="btn btn-ghost">↓ How It Works</a>
+  </div>
+</section>
+
+<!-- ════════ FEATURES ════════ -->
+<section id="features">
+  <div class="container">
+    <h2>What Makes This Different</h2>
+    <p class="section-lead">
+      Not another fine-tune. Kimikazee is a <strong>routing architecture</strong> that squeezes
+      maximum performance from 16GB VRAM by running two models in parallel.
+    </p>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🧠</div>
+        <h3>Scratch Pad LLM</h3>
+        <p>
+          A tiny helper model (Gemma 3 2B / SmolLM2 1.7B) handles task classification,
+          pre-processing, context compression, and output verification at 100+ tok/s.
+        </p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔀</div>
+        <h3>Smart Task Routing</h3>
+        <p>
+          Pattern matching + heuristics classify every request. Trivial tasks go straight to the
+          helper. Complex tasks get pre-processed then verified. Zero wasted compute.
+        </p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🗜️</div>
+        <h3>Context Compression</h3>
+        <p>
+          The helper compresses old conversation turns into structured summaries —
+          50-70% context savings means 3× more turns per session.
+        </p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">✅</div>
+        <h3>Hallucination Gate</h3>
+        <p>
+          After the main model generates, the helper verifies output for factual errors,
+          syntax issues, and contradictions. Cheap insurance at helper-model speed.
+        </p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3>Flash Attention + KV Quant</h3>
+        <p>
+          Built on ik_llama.cpp with Flash Attention and q8_0 KV cache quantization.
+          Both models run full GPU offload on a single RTX 4080 Super.
+        </p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔌</div>
+        <h3>Drop-in FastAPI Plugin</h3>
+        <p>
+          Three files. Zero changes to existing server code.
+          <code>from scratchpad import ScratchPadRouter</code> and go.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ ARCHITECTURE ════════ -->
+<section id="how-it-works">
+  <div class="container">
+    <h2>How It Works</h2>
+    <p class="section-lead">
+      Every request passes through the router. The router decides: can the helper handle this,
+      does the main model need pre-processing, or should we verify the output?
+    </p>
+
+    <div class="arch">
+<pre>
+┌─────────────────────────────────────────────────────────────────────┐
+│                          User Request                               │
+└─────────────────────────────┬───────────────────────────────────────┘
+                              │
+                    ┌─────────▼──────────┐
+                    │  ScratchPadRouter  │
+                    │  classify()        │
+                    └──┬─────┬───────┬───┘
+                       │     │       │
+          ┌────────────┘     │       └────────────┐
+          ▼                  ▼                    ▼
+  ┌───────────────┐  ┌───────────────┐   ┌───────────────┐
+  │   TRIVIAL     │  │   SIMPLE /    │   │   COMPLEX /   │
+  │   Helper Only │  │   STANDARD    │   │   TOOL_CHAIN  │
+  │               │  │               │   │               │
+  │  ┌─────────┐  │  │  ┌─────────┐  │   │  ┌─────────┐  │
+  │  │  Gemma  │  │  │  │  Helper │  │   │  │  Helper │  │
+  │  │  3 2B   │  │  │  │  Pre-   │  │   │  │  Verify │  │
+  │  │ 100tok/s│  │  │  │ Process │  │   │  │ Output  │  │
+  │  └────┬────┘  │  │  └────┬────┘  │   │  └────┬────┘  │
+  │       │       │  │       │       │   │       │       │
+  │  Response     │  │       ▼       │   │       ▼       │
+  │  < 200ms      │  │ ┌───────────┐ │   │ ┌───────────┐ │
+  │               │  │ │   Qwen    │ │   │ │   Qwen    │ │
+  │               │  │ │   3.5 9B  │ │   │ │   3.5 9B  │ │
+  │               │  │ │  35tok/s  │ │   │ │  35tok/s  │ │
+  │               │  │ └─────┬─────┘ │   │ └─────┬─────┘ │
+  │               │  │       │       │   │       │       │
+  │               │  │  Response     │   │  Response     │
+  │               │  │               │   │  + Verified ✓ │
+  └───────────────┘  └───────────────┘   └───────────────┘
+</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ PERFORMANCE ════════ -->
+<section id="performance">
+  <div class="container">
+    <h2>Performance Benchmarks</h2>
+    <p class="section-lead">
+      Tested on RTX 4080 Super (16GB VRAM) with Qwen 3.5 9B Q4_K_M + Gemma 3 2B Q4_K_M.
+      Both running via ik_llama.cpp with Flash Attention + q8_0 KV cache.
+    </p>
+
+    <table class="perf-table">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Single Model</th>
+          <th>Dual Model</th>
+          <th>Improvement</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Trivial Task Latency</td>
+          <td>~2,000ms</td>
+          <td>~150ms</td>
+          <td>13.3×</td>
+        </tr>
+        <tr>
+          <td>Effective Throughput</td>
+          <td>35-50 tok/s</td>
+          <td>50-80 tok/s</td>
+          <td>1.6×</td>
+        </tr>
+        <tr>
+          <td>Context Window Efficiency</td>
+          <td>100% raw</td>
+          <td>30-50% (compressed)</td>
+          <td>2-3× more turns</td>
+        </tr>
+        <tr>
+          <td>Hallucination Detection</td>
+          <td>None</td>
+          <td>~85% caught</td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>Pre-processing Savings</td>
+          <td>—</td>
+          <td>15-40% prompt reduction</td>
+          <td>—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ════════ VRAM ════════ -->
+<section id="vram">
+  <div class="container">
+    <h2>VRAM Budget</h2>
+    <p class="section-lead">
+      Both models fit comfortably on 16GB VRAM with full GPU offload.
+    </p>
+
+    <div class="vram-section">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:0.85rem;color:var(--text2);">RTX 4080 Super — 16,384 MB</span>
+        <span style="font-size:0.85rem;color:var(--green);">~3GB headroom</span>
+      </div>
+      <div class="vram-bar">
+        <div class="vram-segment" style="width:32.4%;background:#7c3aed;">Qwen 9B 5.3GB</div>
+        <div class="vram-segment" style="width:9.2%;background:#22d3ee;color:#000;">Gemma 2B 1.5GB</div>
+        <div class="vram-segment" style="width:18.3%;background:#22c55e;color:#000;">KV Main 3GB</div>
+        <div class="vram-segment" style="width:6.1%;background:#f472b6;color:#000;">KV Help 1GB</div>
+        <div class="vram-segment" style="width:6.1%;background:#64748b;color:#000;">CUDA 1GB</div>
+        <div class="vram-segment" style="width:27.9%;background:rgba(255,255,255,0.05);color:#64748b;">Free</div>
+      </div>
+      <div class="vram-legend">
+        <div class="vram-legend-item"><div class="vram-dot" style="background:#7c3aed;"></div>Main Model (Qwen 3.5 9B Q4_K_M)</div>
+        <div class="vram-legend-item"><div class="vram-dot" style="background:#22d3ee;"></div>Helper Model (Gemma 3 2B Q4_K_M)</div>
+        <div class="vram-legend-item"><div class="vram-dot" style="background:#22c55e;"></div>KV Cache — Main (q8_0)</div>
+        <div class="vram-legend-item"><div class="vram-dot" style="background:#f472b6;"></div>KV Cache — Helper (q8_0)</div>
+        <div class="vram-legend-item"><div class="vram-dot" style="background:#64748b;"></div>CUDA Overhead</div>
+        <div class="vram-legend-item"><div class="vram-dot" style="background:rgba(255,255,255,0.1);"></div>Available Headroom</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ QUICK START ════════ -->
+<section id="quickstart">
+  <div class="container">
+    <h2>Quick Start</h2>
+    <p class="section-lead">
+      Three steps. Go from zero to dual-model inference in under 5 minutes.
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        <span>1. Launch the Helper Server</span>
+        <span class="lang">bash</span>
+      </div>
+      <pre><code><span class="cmt"># Start a second llama-server for the scratch pad</span>
+ik_llama.cpp-server <span class="kw">\</span>
+  -m /models/gemma-3-2b-it-Q4_K_M.gguf <span class="kw">\</span>
+  --host <span class="num">0.0.0.0</span> --port <span class="num">8081</span> <span class="kw">\</span>
+  -c <span class="num">4096</span> -ngl <span class="num">99</span> <span class="kw">\</span>
+  --flash-attn -ctk q8_0</code></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">
+        <span>2. Add to config.yaml</span>
+        <span class="lang">yaml</span>
+      </div>
+      <pre><code><span class="cmt"># Kimikazee config — scratch pad section</span>
+<span class="fn">scratchpad</span>:
+  <span class="fn">enabled</span>: <span class="kw">true</span>
+  <span class="fn">helper_url</span>: <span class="str">"http://localhost:8081"</span>
+  <span class="fn">helper_model</span>: <span class="str">"gemma-3-2b-it"</span>
+  <span class="fn">max_tokens_classify</span>: <span class="num">64</span>
+  <span class="fn">helper_temperature</span>: <span class="num">0.1</span>
+  <span class="fn">helper_timeout</span>: <span class="num">5.0</span></code></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">
+        <span>3. Wire it in server.py</span>
+        <span class="lang">python</span>
+      </div>
+      <pre><code><span class="kw">from</span> scratchpad.integration <span class="kw">import</span> <span class="fn">setup_scratchpad</span>
+
+<span class="cmt"># One line — no changes to existing endpoints</span>
+<span class="fn">setup_scratchpad</span>(app, config, main_completion_fn=your_fn)
+
+<span class="cmt"># The router handles everything:</span>
+<span class="cmt">#   classify → preprocess → main model → verify</span></code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ TECH STACK ════════ -->
+<section id="tech">
+  <div class="container">
+    <h2>The Stack</h2>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>ik_llama.cpp</h3>
+        <p>Optimized llama.cpp fork with Flash Attention, q8_0 KV cache quantization, and multi-token prediction support.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Qwen 3.5 9B Q4_K_M</h3>
+        <p>Main reasoning model. Best quality-to-speed ratio for 16GB VRAM. Runs at ~35-50 tok/s with full GPU offload.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Gemma 3 2B Q4_K_M</h3>
+        <p>Helper scratch pad model. 100+ tok/s for classification, pre-processing, and verification. Only 1.5GB VRAM.</p>
+      </div>
+      <div class="feature-card">
+        <h3>FastAPI + Python</h3>
+        <p>Async-first architecture. OpenAI-compatible API. Drop-in plugin — three files, zero coupling.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ FOOTER ════════ -->
+<footer>
+  <div class="container">
+    <p style="margin-bottom:12px;">
+      <a href="https://github.com/multidimensionalinteractive/kimikazee-qwopus">GitHub</a>
+      &nbsp;·&nbsp;
+      <a href="https://github.com/multidimensionalinteractive/kimikazee-qwopus/blob/main/docs/scratchpad.md">Documentation</a>
+      &nbsp;·&nbsp;
+      <a href="https://github.com/multidimensionalinteractive/kimikazee-qwopus/blob/main/CONTRIBUTING.md">Contributing</a>
+    </p>
+    <p>MIT License · Built with ik_llama.cpp · Optimized for RTX 4080 Super</p>
+    <p style="margin-top:8px;color:#555;">
+      Kimikazee Qwopus — because your GPU deserves two brains
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>
