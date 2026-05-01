@@ -180,6 +180,7 @@ async def proxy_request(
     messages: List[Dict],
     params: Dict,
     stream: bool = False,
+    passthrough: Optional[Dict] = None,
 ) -> httpx.Response:
     """Forward request to the chosen llama-server endpoint."""
     payload = {
@@ -193,6 +194,21 @@ async def proxy_request(
     }
     if params.get("stop"):
         payload["stop"] = params["stop"]
+    if passthrough:
+        # Preserve OpenAI-compatible tool calling and structured-output fields
+        # from Hermes. Without this, the local model only sees prose
+        # instructions and tends to describe tool calls instead of making them.
+        for key in (
+            "tools",
+            "tool_choice",
+            "parallel_tool_calls",
+            "response_format",
+            "seed",
+            "presence_penalty",
+            "frequency_penalty",
+        ):
+            if key in passthrough and passthrough[key] is not None:
+                payload[key] = passthrough[key]
 
     url = f"{endpoint}/v1/chat/completions"
     timeout = httpx.Timeout(connect=5, read=300, write=10, pool=10)
@@ -291,6 +307,15 @@ def create_app(config_path: str = "config.yaml") -> FastAPI:
         top_k = body.get("top_k", cfg.get("top_k", 40))
         max_tokens = body.get("max_tokens", -1)
         stop = body.get("stop")
+        passthrough = {k: body.get(k) for k in (
+            "tools",
+            "tool_choice",
+            "parallel_tool_calls",
+            "response_format",
+            "seed",
+            "presence_penalty",
+            "frequency_penalty",
+        )}
 
         params = {
             "temperature": temperature,
@@ -321,7 +346,7 @@ def create_app(config_path: str = "config.yaml") -> FastAPI:
             # model responses. Fetch non-streaming from llama-server, then emit a
             # minimal OpenAI-style SSE stream for streaming callers.
             resp = await proxy_request(
-                endpoint, model_name, messages, params, stream=False
+                endpoint, model_name, messages, params, stream=False, passthrough=passthrough
             )
         except httpx.ConnectError:
             raise HTTPException(
@@ -334,7 +359,10 @@ def create_app(config_path: str = "config.yaml") -> FastAPI:
 
         if stream:
             async def stream_generator():
-                content = data.get("choices", [{}])[0].get("message", {}).get("content") or ""
+                choice = data.get("choices", [{}])[0]
+                message = choice.get("message", {}) or {}
+                content = message.get("content") or ""
+                tool_calls = message.get("tool_calls") or []
                 chunk_id = data.get("id") or f"chatcmpl-{uuid.uuid4()}"
                 created = int(time.time())
                 first = {
@@ -354,12 +382,37 @@ def create_app(config_path: str = "config.yaml") -> FastAPI:
                         "choices": [{"index": 0, "delta": {"content": content}, "finish_reason": None}],
                     }
                     yield "data: " + json.dumps(body) + "\n\n"
+                for idx, call in enumerate(tool_calls):
+                    function = call.get("function") or {}
+                    body = {
+                        "id": chunk_id,
+                        "object": "chat.completion.chunk",
+                        "created": created,
+                        "model": model_name,
+                        "choices": [{
+                            "index": 0,
+                            "delta": {
+                                "tool_calls": [{
+                                    "index": idx,
+                                    "id": call.get("id") or f"call_{uuid.uuid4().hex[:16]}",
+                                    "type": call.get("type") or "function",
+                                    "function": {
+                                        "name": function.get("name") or "",
+                                        "arguments": function.get("arguments") or "{}",
+                                    },
+                                }]
+                            },
+                            "finish_reason": None,
+                        }],
+                    }
+                    yield "data: " + json.dumps(body) + "\n\n"
+                finish_reason = "tool_calls" if tool_calls else (choice.get("finish_reason") or "stop")
                 final = {
                     "id": chunk_id,
                     "object": "chat.completion.chunk",
                     "created": created,
                     "model": model_name,
-                    "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+                    "choices": [{"index": 0, "delta": {}, "finish_reason": finish_reason}],
                 }
                 yield "data: " + json.dumps(final) + "\n\n"
                 yield "data: [DONE]\n\n"
