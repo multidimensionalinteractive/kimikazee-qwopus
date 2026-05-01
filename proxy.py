@@ -74,6 +74,7 @@ logging.basicConfig(
 log = logging.getLogger("qwopus.proxy")
 
 TOOL_CALL_RE = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.DOTALL)
+TOOL_CODE_RE = re.compile(r"<tool_code>\s*(.*?)\s*</tool_code>", re.DOTALL)
 
 
 def convert_xml_tool_calls(data: Dict) -> int:
@@ -84,7 +85,7 @@ def convert_xml_tool_calls(data: Dict) -> int:
         if message.get("tool_calls"):
             continue
         content = message.get("content") or ""
-        if not isinstance(content, str) or "<tool_call>" not in content:
+        if not isinstance(content, str) or ("<tool_call>" not in content and "<tool_code>" not in content):
             continue
         calls = []
         for match in TOOL_CALL_RE.finditer(content):
@@ -110,9 +111,21 @@ def convert_xml_tool_calls(data: Dict) -> int:
                 "type": "function",
                 "function": {"name": name, "arguments": arg_str},
             })
+        for match in TOOL_CODE_RE.finditer(content):
+            command = match.group(1).strip()
+            if command:
+                calls.append({
+                    "id": f"call_{uuid.uuid4().hex[:16]}",
+                    "type": "function",
+                    "function": {
+                        "name": "terminal",
+                        "arguments": json.dumps({"command": command, "timeout": 30}, separators=(",", ":")),
+                    },
+                })
         if not calls:
             continue
-        cleaned = TOOL_CALL_RE.sub("", content).strip()
+        cleaned = TOOL_CALL_RE.sub("", content)
+        cleaned = TOOL_CODE_RE.sub("", cleaned).strip()
         message["content"] = cleaned or None
         message["tool_calls"] = calls
         choice["finish_reason"] = "tool_calls"
