@@ -73,6 +73,52 @@ logging.basicConfig(
 )
 log = logging.getLogger("qwopus.proxy")
 
+TOOL_CALL_RE = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.DOTALL)
+
+
+def convert_xml_tool_calls(data: Dict) -> int:
+    """Translate Hermes XML tool calls in assistant content to OpenAI tool_calls."""
+    converted = 0
+    for choice in data.get("choices", []) or []:
+        message = choice.get("message") or {}
+        if message.get("tool_calls"):
+            continue
+        content = message.get("content") or ""
+        if not isinstance(content, str) or "<tool_call>" not in content:
+            continue
+        calls = []
+        for match in TOOL_CALL_RE.finditer(content):
+            raw = match.group(1)
+            try:
+                parsed = json.loads(raw)
+            except Exception:
+                continue
+            name = parsed.get("name")
+            args = parsed.get("arguments", {})
+            if not name and isinstance(parsed.get("function"), dict):
+                fn = parsed["function"]
+                name = fn.get("name")
+                args = fn.get("arguments", args)
+            if not name:
+                continue
+            if isinstance(args, str):
+                arg_str = args
+            else:
+                arg_str = json.dumps(args, separators=(",", ":"))
+            calls.append({
+                "id": f"call_{uuid.uuid4().hex[:16]}",
+                "type": "function",
+                "function": {"name": name, "arguments": arg_str},
+            })
+        if not calls:
+            continue
+        cleaned = TOOL_CALL_RE.sub("", content).strip()
+        message["content"] = cleaned or None
+        message["tool_calls"] = calls
+        choice["finish_reason"] = "tool_calls"
+        converted += len(calls)
+    return converted
+
 # ─────────────────────────────────────────────────────────────────────────────
 # ROUTING HEURISTICS
 # ─────────────────────────────────────────────────────────────────────────────
@@ -300,7 +346,15 @@ def create_app(config_path: str = "config.yaml") -> FastAPI:
         temperature = body.get("temperature", cfg.get("temp", 0.5))
         top_p = body.get("top_p", cfg.get("top_p", 0.92))
         top_k = body.get("top_k", cfg.get("top_k", 40))
-        max_tokens = body.get("max_tokens", -1)
+        requested_max_tokens = body.get("max_tokens", body.get("max_completion_tokens", -1))
+        max_tokens_cap = int(cfg.get("max_tokens_cap", 2048) or 2048)
+        try:
+            max_tokens = int(requested_max_tokens)
+        except (TypeError, ValueError):
+            max_tokens = -1
+        if max_tokens_cap > 0 and max_tokens > max_tokens_cap:
+            log.info("clamping max_tokens %s -> %s", max_tokens, max_tokens_cap)
+            max_tokens = max_tokens_cap
         stop = body.get("stop")
         passthrough = {k: body.get(k) for k in (
             "tools",
@@ -356,6 +410,10 @@ def create_app(config_path: str = "config.yaml") -> FastAPI:
             data = resp.json()
         except Exception:
             data = {"error": {"message": resp.text[:1000]}}
+
+        converted_tool_calls = convert_xml_tool_calls(data) if isinstance(data, dict) else 0
+        if converted_tool_calls:
+            log.info("converted %d XML tool_call block(s) to OpenAI tool_calls", converted_tool_calls)
 
         if resp.status_code >= 400:
             message = "backend error"

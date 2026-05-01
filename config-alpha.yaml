@@ -7,9 +7,10 @@ model: Qwen3.5-9B-DeepSeek-V4-Flash-Q4_K_M.gguf
 context_window: 128000
 parallel: 4
 n_predict: -1
+max_tokens_cap: 2048
 
-temp: 0.5
-top_p: 0.92
+temp: 0.7
+top_p: 0.95
 top_k: 40
 min_p: 0.05
 repeat_penalty: 1.1
@@ -18,7 +19,7 @@ mirostat_tau: 5.0
 mirostat_eta: 0.1
 
 temp_tool_call: 0.15
-temp_reasoning: 0.5
+temp_reasoning: 0.7
 temp_chat: 0.8
 
 repeat_penalty_last_n: 256
@@ -46,7 +47,7 @@ scratchpad:
   helper_endpoint: "http://100.71.243.108:8081"
   main_endpoint: "http://100.71.243.108:8080"
   helper_model: "SmolLM2-1.7B-Q4_K_M.gguf"
-  main_model: "Kimikazee-Qwopus-DeepSeek-Q3_K_M.gguf"
+  main_model: "Qwen3.5-9B-DeepSeek-V4-Flash-Q4_K_M.gguf"
   complexity_threshold: 3
   helper_always: ["classify", "yes_no", "sentiment", "extract", "format"]
   main_always: ["code", "reasoning", "analysis", "creative", "multi_step"]
