@@ -110,7 +110,7 @@ User Request → proxy.py (port 3000)
     │
     ├─ HELPER → SmolLM2 1.7B :8081
     │   "what is 2+2", "classify this", "yes or no"
-    │   Response in <200ms, ~80+ tok/s
+    │   Response in <200ms, 238–287 tok/s
     │
     └─ MAIN → Qwopus 9B :8080
         Code, reasoning, analysis, creative writing
@@ -131,7 +131,7 @@ User Request → proxy.py (port 3000)
 ```bash
 # Start both models
 llama-server -m models/Qwopus-DeepSeek-Q3_K_M.gguf -p 8080 -c 4096 -ngl 99
-llama-server -m models/SmolLM2-1.7B-Q4_K_M.gguf -p 8081 -c 2048 -ngl 99
+llama-server -m models/SmolLM2-1.7B-Q4_K_M.gguf --port 8081 -c 4096 -ngl 99 -b 8192 --no-mmap --parallel 1 -t 16
 
 # Start proxy (routes between them)
 python proxy.py --port 3000
