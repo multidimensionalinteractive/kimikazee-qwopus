@@ -4,7 +4,7 @@
 provider: custom
 model: Qwen3.5-9B-DeepSeek-V4-Flash-Q4_K_M.gguf
 
-context_window: 32768
+context_window: 24576
 parallel: 4
 n_predict: -1
 max_tokens_cap: 2048
@@ -24,7 +24,7 @@ temp_chat: 0.8
 
 repeat_penalty_last_n: 256
 flash_attn: true
-n_threads: 8
+n_threads: 10
 n_gpu_layers: -1
 
 discord:
